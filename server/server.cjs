@@ -111,12 +111,12 @@ const server = http.createServer(async (req, res) => {
         if (!body || typeof body !== 'object') {
           return send(res, 400, { error: 'Invalid body' });
         }
-        const { name, roles, role, availability, notes, timezone, clientId } = body;
+        const { name, roles, role, availability, notes, timezone, clientId, discordName } = body;
         if (!name || (!roles && !role) || !availability || typeof availability !== 'object') {
           return send(res, 400, { error: 'Missing required fields' });
         }
         const tz = typeof timezone === 'string' && timezone ? timezone : 'America/New_York';
-        const newPlayer = { id: generateId(), name, roles: roles || (role ? [role] : ['DPS']), availability, notes, timezone: tz, board, clientId };
+        const newPlayer = { id: generateId(), name, roles: roles || (role ? [role] : ['DPS']), availability, notes, timezone: tz, board, clientId, discordName };
         upsertPlayer(newPlayer);
         broadcast(board, { type: 'player_added', id: newPlayer.id });
         return send(res, 201, newPlayer);
@@ -167,6 +167,7 @@ const server = http.createServer(async (req, res) => {
         timezone: body.timezone ?? current.timezone,
         availability: body.availability ?? current.availability,
         notes: body.notes ?? current.notes ?? null,
+        discordName: body.discordName ?? current.discordName ?? null,
       };
       const ok = updatePlayer(patch);
       if (!ok) return send(res, 500, { error: 'Failed to update' });

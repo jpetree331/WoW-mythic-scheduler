@@ -8,6 +8,128 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/1kFce6wtiYY2NP37mPZ8IF9z9teUdLgMo
 
+## Tech Stack
+
+- Frontend: React + TypeScript (Vite)
+  - Dev server and build via Vite (`vite.config.ts`, `npm run dev`, `npm run build`).
+  - UI components in `App.tsx` and `components/`.
+- Backend: Node.js (CommonJS)
+  - Minimal HTTP server in `server/server.cjs` (no framework).
+  - Real‑time updates via Server‑Sent Events at `GET /events?board=...`.
+- Database: SQLite (better-sqlite3)
+  - Migrations in `server/migrations` and WAL mode enabled.
+  - Data file at `server/data/app.db` (persist this path in production).
+- Shared Types/Constants
+  - Type definitions in `types.ts`; shared helpers in `constants.ts` and `services/`.
+- AuthZ Model
+  - Per‑browser ownership using `clientId` stored in `localStorage` and sent as `X-Client-Id`.
+  - Owners can edit/delete their own entries; admin token can override for destructive actions.
+- Environment Variables
+  - Frontend: `VITE_API_BASE` (backend URL), `VITE_ADMIN_CLIENT_ID` (optional: show admin button for a specific client).
+  - Backend: `ADMIN_TOKEN` (defaults to `IXOYEFISH` if not set).
+
+## API Endpoints
+
+- GET `/health`
+  - Response: `{ "ok": true }`
+
+- GET `/players?board=<slug>`
+  - Returns all players for the given `board` (required for shared datasets).
+  - Response: `Player[]`
+
+- POST `/players?board=<slug>`
+  - Creates a player on the given `board`.
+  - Headers: `Content-Type: application/json`
+  - Body: `{ name: string, roles?: Role[], role?: Role, availability: { [day: string]: { start: number, end: number }[] }, notes?: string, timezone?: string, clientId?: string }`
+  - Response: created `Player`
+
+- DELETE `/players?board=<slug>`
+  - Clears all players for the given `board`.
+  - Headers: `Authorization: Bearer <ADMIN_TOKEN>`
+  - Response: `{ ok: true }`
+
+- DELETE `/players/:id`
+  - Deletes a single player by id.
+  - Headers (either):
+    - Owner: `X-Client-Id: <clientId>` (matches the row’s owner)
+    - Admin: `Authorization: Bearer <ADMIN_TOKEN>`
+  - Response: `{ ok: true }` or `404`
+
+- PATCH `/players/:id`
+  - Updates a player’s fields (owner or admin only).
+  - Headers: `Content-Type: application/json` and either owner `X-Client-Id` or admin `Authorization`.
+  - Body (partial): `{ name?, roles?, role?, availability?, notes?, timezone? }`
+  - Response: updated partial `Player`
+
+- GET `/events?board=<slug>` (Server‑Sent Events)
+  - Streams live changes for a board.
+  - Event name: `players`
+  - Payloads: `{ type: 'player_added' | 'player_deleted' | 'player_updated' | 'players_cleared', id?: string }`
+
+Notes
+- Ownership: The browser that creates an entry includes `clientId` in the POST body; later updates/deletes must send the same `X-Client-Id` header.
+- Timezones: All matching is computed relative to ET; users set their own timezone when creating entries.
+- CORS: Open for local and cross‑origin use; allowed headers include `Content-Type`, `Authorization`, and `X-Client-Id`.
+
+### curl Examples
+
+Replace `API` with your backend URL (e.g., `https://your-service.onrender.com`) and `BOARD` with your guild slug.
+
+Health
+```
+curl -s "API/health"
+```
+
+List Players
+```
+curl -s "API/players?board=BOARD"
+```
+
+Create Player (owner `clientId` optional but recommended)
+```
+curl -s -X POST "API/players?board=BOARD" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Arthas",
+    "roles": ["Tank"],
+    "timezone": "America/New_York",
+    "availability": {"Monday":[{"start":1140,"end":1320}]},
+    "notes": "Prot Warrior",
+    "clientId": "YOUR_CLIENT_ID"
+  }'
+```
+
+Delete Player (as owner)
+```
+curl -s -X DELETE "API/players/PLAYER_ID" \
+  -H "X-Client-Id: YOUR_CLIENT_ID"
+```
+
+Delete Player (as admin)
+```
+curl -s -X DELETE "API/players/PLAYER_ID" \
+  -H "Authorization: Bearer IXOYEFISH"
+```
+
+Clear Board (admin only)
+```
+curl -s -X DELETE "API/players?board=BOARD" \
+  -H "Authorization: Bearer IXOYEFISH"
+```
+
+Update Player (owner or admin)
+```
+curl -s -X PATCH "API/players/PLAYER_ID" \
+  -H "Content-Type: application/json" \
+  -H "X-Client-Id: YOUR_CLIENT_ID" \
+  -d '{"notes": "KSM 2.7k"}'
+```
+
+SSE Stream (live updates)
+```
+curl -N "API/events?board=BOARD"
+```
+
 ## Run Locally
 
 **Prerequisites:**  Node.js

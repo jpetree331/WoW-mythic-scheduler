@@ -14,6 +14,7 @@ const AvailabilityForm: React.FC<AvailabilityFormProps> = ({ onSubmit, initial, 
   const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
   const [availability, setAvailability] = useState<Availability>({});
   const [notes, setNotes] = useState('');
+  const [discordName, setDiscordName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const defaultTz = (Intl && Intl.DateTimeFormat().resolvedOptions().timeZone) || 'America/New_York';
   const [timezone, setTimezone] = useState<string>(defaultTz);
@@ -26,6 +27,7 @@ const AvailabilityForm: React.FC<AvailabilityFormProps> = ({ onSubmit, initial, 
       setAvailability(initial.availability || {} as Availability);
       setNotes(initial.notes || '');
       setTimezone(initial.timezone || defaultTz);
+      setDiscordName(initial.discordName || '');
     }
   }, [initial]);
 
@@ -73,12 +75,13 @@ const AvailabilityForm: React.FC<AvailabilityFormProps> = ({ onSubmit, initial, 
     }
     setError(null);
 
-    onSubmit({ name, roles: selectedRoles, availability, notes, timezone });
+    onSubmit({ name, roles: selectedRoles, availability, notes, timezone, discordName: discordName || undefined });
     setName('');
     setSelectedRoles([]);
     setAvailability({});
     setNotes('');
     setTimezone(defaultTz);
+    setDiscordName('');
   };
 
   return (
@@ -119,6 +122,18 @@ const AvailabilityForm: React.FC<AvailabilityFormProps> = ({ onSubmit, initial, 
               <option value={timezone}>{timezone}</option>
             )}
           </select>
+        </div>
+
+        <div>
+          <label htmlFor="discord" className="block text-sm font-medium text-gray-300 mb-1">Discord Name (optional)</label>
+          <input
+            type="text"
+            id="discord"
+            value={discordName}
+            onChange={(e) => setDiscordName(e.target.value)}
+            className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 px-3 text-white focus:ring-yellow-500 focus:border-yellow-500"
+            placeholder="e.g., YourName#1234 or @yourname"
+          />
         </div>
 
         <div>

@@ -186,11 +186,14 @@ const SummaryDisplay: React.FC<SummaryDisplayProps> = ({ matches, allPlayers, on
                     <span className="w-6 h-6 flex items-center justify-center">{roleIcons[(player.roles && player.roles[0]) || Role.DPS]}</span>
                     <div>
                       <p className={`font-semibold ${roleTextColors[(player.roles && player.roles[0]) || Role.DPS]}`}>{player.name}</p>
-                       {player.notes ? (
-                         <p className="text-xs text-gray-400 italic">"{player.notes}"</p>
-                       ) : (
-                         <p className="text-xs text-gray-500">{(player.roles||[]).join(', ')}</p>
-                       )}
+                      {player.discordName && (
+                        <p className="text-xs text-blue-300">Discord: {player.discordName}</p>
+                      )}
+                      {player.notes ? (
+                        <p className="text-xs text-gray-400 italic">"{player.notes}"</p>
+                      ) : (
+                        <p className="text-xs text-gray-500">{(player.roles||[]).join(', ')}</p>
+                      )}
                       {/* Raw availability display */}
                       <div className="mt-1 text-xs text-gray-400">
                         <span className="mr-1">{player.timezone}:</span>

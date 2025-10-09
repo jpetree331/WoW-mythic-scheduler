@@ -20,6 +20,7 @@ export interface Player {
   timezone: string; // IANA timezone, e.g., 'America/New_York'
   availability: Availability;
   notes?: string;
+  discordName?: string; // optional Discord handle for contact
   board?: string; // board slug this player belongs to
   clientId?: string; // owner id (local browser)
 }

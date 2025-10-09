@@ -47,17 +47,17 @@ runMigrations(db);
 
 // Data access helpers
 const selectAllByBoard = db.prepare(
-  `SELECT id, name, role, roles, timezone, availability, notes, created_at, board, client_id FROM players WHERE board = @board ORDER BY created_at ASC`
+  `SELECT id, name, role, roles, timezone, availability, notes, discord_name, created_at, board, client_id FROM players WHERE board = @board ORDER BY created_at ASC`
 );
 const selectById = db.prepare(
-  `SELECT id, name, role, roles, timezone, availability, notes, created_at, board, client_id FROM players WHERE id = ?`
+  `SELECT id, name, role, roles, timezone, availability, notes, discord_name, created_at, board, client_id FROM players WHERE id = ?`
 );
 const insertPlayer = db.prepare(
-  `INSERT INTO players (id, name, role, roles, timezone, availability, notes, created_at, board, client_id)
-   VALUES (@id, @name, @roleSingle, @rolesJson, @timezone, @availability, @notes, @created_at, @board, @client_id)`
+  `INSERT INTO players (id, name, role, roles, timezone, availability, notes, discord_name, created_at, board, client_id)
+   VALUES (@id, @name, @roleSingle, @rolesJson, @timezone, @availability, @notes, @discord_name, @created_at, @board, @client_id)`
 );
 const updatePlayerStmt = db.prepare(
-  `UPDATE players SET name=@name, role=@roleSingle, roles=@rolesJson, timezone=@timezone, availability=@availability, notes=@notes WHERE id=@id`
+  `UPDATE players SET name=@name, role=@roleSingle, roles=@rolesJson, timezone=@timezone, availability=@availability, notes=@notes, discord_name=@discord_name WHERE id=@id`
 );
 const deleteByIdStmt = db.prepare(`DELETE FROM players WHERE id = ?`);
 const deleteAllStmt = db.prepare(`DELETE FROM players`);
@@ -71,6 +71,7 @@ function listPlayers(board) {
     timezone: r.timezone,
     availability: JSON.parse(r.availability),
     notes: r.notes || undefined,
+    discordName: r.discord_name || undefined,
     board: r.board,
     clientId: r.client_id || undefined,
   }));
@@ -85,6 +86,7 @@ function upsertPlayer(p) {
     timezone: p.timezone,
     availability: JSON.stringify(p.availability),
     notes: p.notes || null,
+    discord_name: p.discordName || null,
     created_at: Date.now(),
     board: p.board || 'default',
     client_id: p.clientId || null,
@@ -114,6 +116,7 @@ function getPlayer(id) {
     timezone: r.timezone,
     availability: JSON.parse(r.availability),
     notes: r.notes || undefined,
+    discordName: r.discord_name || undefined,
     board: r.board,
     clientId: r.client_id || undefined,
   };
@@ -128,6 +131,7 @@ function updatePlayer(p) {
     timezone: p.timezone,
     availability: JSON.stringify(p.availability),
     notes: p.notes || null,
+    discord_name: p.discordName || null,
   });
   return info.changes > 0;
 }
