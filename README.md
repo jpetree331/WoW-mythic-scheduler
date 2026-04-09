@@ -1,182 +1,59 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Mythic+ Friend Finder
 
-# Run and deploy your AI Studio app
+A scheduling tool for World of Warcraft guilds to find overlapping Mythic+ availability across timezones. Players enter their weekly windows, and the app computes every time slot where a valid 5-player group (1 Tank, 1 Healer, 3 DPS) can form — accounting for multi-role players.
 
-This contains everything you need to run your app locally.
+Each guild gets its own board via URL slug. Updates sync in real time across all connected browsers.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1kFce6wtiYY2NP37mPZ8IF9z9teUdLgMo
+## How It Works
+
+1. Players add their name, role(s), timezone, and weekly availability
+2. The matching engine converts all time slots to a shared reference timezone, bins the week into 30-minute windows, and finds every overlap
+3. A backtracking search checks which overlaps can fill a valid group comp (Tank/Healer/3×DPS), handling players who queue multiple roles
+4. Results update live via Server-Sent Events — no refresh needed
 
 ## Tech Stack
 
-- Frontend: React + TypeScript (Vite)
-  - Dev server and build via Vite (`vite.config.ts`, `npm run dev`, `npm run build`).
-  - UI components in `App.tsx` and `components/`.
-- Backend: Node.js (CommonJS)
-  - Minimal HTTP server in `server/server.cjs` (no framework).
-  - Real‑time updates via Server‑Sent Events at `GET /events?board=...`.
-- Database: SQLite (better-sqlite3)
-  - Migrations in `server/migrations` and WAL mode enabled.
-  - Data file at `server/data/app.db` (persist this path in production).
-- Shared Types/Constants
-  - Type definitions in `types.ts`; shared helpers in `constants.ts` and `services/`.
-- AuthZ Model
-  - Per‑browser ownership using `clientId` stored in `localStorage` and sent as `X-Client-Id`.
-  - Owners can edit/delete their own entries; admin token can override for destructive actions.
-- Environment Variables
-  - Frontend: `VITE_API_BASE` (backend URL), `VITE_ADMIN_CLIENT_ID` (optional: show admin button for a specific client).
-  - Backend: `ADMIN_TOKEN` (defaults to `IXOYEFISH` if not set).
+- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Luxon
+- **Backend:** Node.js (raw `http` module), SQLite (better-sqlite3, WAL mode)
+- **Deployment:** Vercel (frontend) + Railway (backend with persistent volume)
 
-## API Endpoints
+## Quick Start
 
-- GET `/health`
-  - Response: `{ "ok": true }`
+```bash
+npm install
 
-- GET `/players?board=<slug>`
-  - Returns all players for the given `board` (required for shared datasets).
-  - Response: `Player[]`
+# Start backend (port 8787)
+npm run server
 
-- POST `/players?board=<slug>`
-  - Creates a player on the given `board`.
-  - Headers: `Content-Type: application/json`
-  - Body: `{ name: string, roles?: Role[], role?: Role, availability: { [day: string]: { start: number, end: number }[] }, notes?: string, timezone?: string, clientId?: string }`
-  - Response: created `Player`
+# Start frontend (port 3000)
+npm run dev
 
-- DELETE `/players?board=<slug>`
-  - Clears all players for the given `board`.
-  - Headers: `Authorization: Bearer <ADMIN_TOKEN>`
-  - Response: `{ ok: true }`
-
-- DELETE `/players/:id`
-  - Deletes a single player by id.
-  - Headers (either):
-    - Owner: `X-Client-Id: <clientId>` (matches the row’s owner)
-    - Admin: `Authorization: Bearer <ADMIN_TOKEN>`
-  - Response: `{ ok: true }` or `404`
-
-- PATCH `/players/:id`
-  - Updates a player’s fields (owner or admin only).
-  - Headers: `Content-Type: application/json` and either owner `X-Client-Id` or admin `Authorization`.
-  - Body (partial): `{ name?, roles?, role?, availability?, notes?, timezone? }`
-  - Response: updated partial `Player`
-
-- GET `/events?board=<slug>` (Server‑Sent Events)
-  - Streams live changes for a board.
-  - Event name: `players`
-  - Payloads: `{ type: 'player_added' | 'player_deleted' | 'player_updated' | 'players_cleared', id?: string }`
-
-Notes
-- Ownership: The browser that creates an entry includes `clientId` in the POST body; later updates/deletes must send the same `X-Client-Id` header.
-- Timezones: All matching is computed relative to ET; users set their own timezone when creating entries.
-- CORS: Open for local and cross‑origin use; allowed headers include `Content-Type`, `Authorization`, and `X-Client-Id`.
-
-### curl Examples
-
-Replace `API` with your backend URL (e.g., `https://your-service.onrender.com`) and `BOARD` with your guild slug.
-
-Health
-```
-curl -s "API/health"
+# Open http://localhost:3000/?board=your-guild-name
 ```
 
-List Players
-```
-curl -s "API/players?board=BOARD"
-```
+Set `ADMIN_TOKEN` in your environment before deploying — the default is not secure for production use.
 
-Create Player (owner `clientId` optional but recommended)
-```
-curl -s -X POST "API/players?board=BOARD" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Arthas",
-    "roles": ["Tank"],
-    "timezone": "America/New_York",
-    "availability": {"Monday":[{"start":1140,"end":1320}]},
-    "notes": "Prot Warrior",
-    "clientId": "YOUR_CLIENT_ID"
-  }'
-```
+## Features
 
-Delete Player (as owner)
-```
-curl -s -X DELETE "API/players/PLAYER_ID" \
-  -H "X-Client-Id: YOUR_CLIENT_ID"
-```
+- **Multi-board** — One instance serves multiple guilds via `?board=` URL parameter
+- **Timezone-aware matching** — Players enter availability in their local time; the algorithm handles conversion
+- **Multi-role support** — Players who can Tank *or* DPS get correctly slotted by the group composition solver
+- **Real-time sync** — SSE pushes changes to all connected clients on the same board
+- **Per-browser ownership** — Players can only edit/delete their own entries; admin token for moderation
 
-Delete Player (as admin)
-```
-curl -s -X DELETE "API/players/PLAYER_ID" \
-  -H "Authorization: Bearer IXOYEFISH"
-```
+## Deployment
 
-Clear Board (admin only)
-```
-curl -s -X DELETE "API/players?board=BOARD" \
-  -H "Authorization: Bearer IXOYEFISH"
-```
+**Backend (Railway):**
+1. Start command: `node server/server.cjs`
+2. Mount a persistent volume at `/app/server/data` for the SQLite database
+3. Set env var: `ADMIN_TOKEN=your-secret`
 
-Update Player (owner or admin)
-```
-curl -s -X PATCH "API/players/PLAYER_ID" \
-  -H "Content-Type: application/json" \
-  -H "X-Client-Id: YOUR_CLIENT_ID" \
-  -d '{"notes": "KSM 2.7k"}'
-```
+**Frontend (Vercel):**
+1. Framework: Vite | Build: `npm run build` | Output: `dist/`
+2. Set env var: `VITE_API_BASE=https://your-railway-url`
 
-SSE Stream (live updates)
-```
-curl -N "API/events?board=BOARD"
-```
+Share links as `https://your-app.vercel.app/?board=GuildName`.
 
-## Run Locally
+## License
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Install new dependencies (timezone + SQLite):
-   `npm install luxon better-sqlite3`
-
-4. Start the backend (new):
-   `npm run server`
-
-   The backend runs at `http://localhost:8787` and stores shared player data in a SQLite DB at `server/data/app.db`.
-
-5. Run the frontend:
-   `npm run dev`
-
-   Optionally set a custom backend URL with `VITE_API_BASE` in `.env.local`.
-
-## Admin Controls
-
-- To protect destructive operations (delete/clear), set an admin token on the backend:
-  - Default admin token: `IXOYEFISH`.
-  - To change it: on Railway (or locally) add env var `ADMIN_TOKEN=your-secret` on the server service.
-  - The frontend sends `Authorization: Bearer <token>` for delete/clear when you set it via the “Set Admin Token” button.
-  - If `ADMIN_TOKEN` is not set, the server uses the default token above.
-
-## Live Updates
-
-- Backend exposes Server‑Sent Events at `GET /events?board=...`.
-- Frontend auto‑subscribes and refreshes the list on changes.
-
-## Deploy to Railway (Backend)
-
-1) Create a new Node service from this repo.
-2) Set the Start Command: `node server/server.cjs`
-3) Add a persistent volume and mount it at `/app/server/data` (this is where the SQLite DB `app.db` is stored).
-4) Add environment variables as needed:
-   - `ADMIN_TOKEN=choose-a-secret` (optional but recommended)
-5) Deploy. Note the service URL (e.g., `https://mff-api.up.railway.app`).
-
-## Deploy to Vercel (Frontend)
-
-1) Import the repo and select the Vite framework.
-2) Build: `npm install && npm run build`
-3) Output: `dist`
-4) Env Var: `VITE_API_BASE` = your Railway URL (e.g., `https://mff-api.up.railway.app`).
-5) Deploy and share links like `https://your-app.vercel.app/?board=YourGuild`.
+MIT
