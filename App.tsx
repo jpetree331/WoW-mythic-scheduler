@@ -17,8 +17,20 @@ const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState<boolean>(!!getAdminToken());
   const [editing, setEditing] = useState<Player | null>(null);
   const [timezoneFilter, setTimezoneFilter] = useState<string>('all');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const myClientId = getClientId();
   const isOwner = ADMIN_CLIENT_ID ? myClientId === ADMIN_CLIENT_ID : false;
+
+  const showError = (msg: string) => {
+    setErrorMessage(msg);
+    setTimeout(() => setErrorMessage(null), 5000);
+  };
+
+  const showStatus = (msg: string) => {
+    setStatusMessage(msg);
+    setTimeout(() => setStatusMessage(null), 2500);
+  };
 
   useEffect(() => {
     const calculatedMatches = findOverlaps(players);
@@ -61,7 +73,7 @@ const App: React.FC = () => {
       }
     } catch (e) {
       console.error('Failed to add player', e);
-      alert('Failed to submit availability. Please try again.');
+      showError('Failed to submit availability. Please try again.');
     }
   };
   
@@ -75,7 +87,7 @@ const App: React.FC = () => {
         const token = prompt('Admin token required to delete. Enter token:');
         if (token) setAdminToken(token);
       } else {
-        alert('Failed to delete player.');
+        showError('Failed to delete player.');
       }
     }
   };
@@ -94,7 +106,7 @@ const App: React.FC = () => {
           await apiClearPlayers();
           setPlayers([]);
         } catch {
-          alert('Failed to clear players.');
+          showError('Failed to clear players.');
         }
       }
     }
@@ -158,6 +170,17 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
+        {errorMessage && (
+          <div className="mb-4 px-4 py-3 bg-red-900 border border-red-600 text-red-200 rounded-md flex items-center justify-between">
+            <span>{errorMessage}</span>
+            <button onClick={() => setErrorMessage(null)} className="ml-4 text-red-400 hover:text-red-200 font-bold">✕</button>
+          </div>
+        )}
+        {statusMessage && (
+          <div className="mb-4 px-4 py-3 bg-gray-700 border border-gray-500 text-gray-200 rounded-md text-center">
+            {statusMessage}
+          </div>
+        )}
         <header className="text-center mb-10">
           <h1 className="text-4xl sm:text-5xl font-bold text-yellow-400 tracking-wider" style={{textShadow: '0 0 10px rgba(250, 204, 21, 0.5)'}}>
             Mythic+ Friend Finder
@@ -171,7 +194,7 @@ const App: React.FC = () => {
                   url.searchParams.set('board', 'default');
                 }
                 navigator.clipboard.writeText(url.toString());
-                alert('Shareable link copied to clipboard');
+                showStatus('Link copied to clipboard');
               }}
               className="text-sm bg-gray-700 hover:bg-gray-600 text-yellow-300 font-semibold py-1 px-3 rounded-md transition-colors"
             >
